@@ -1,5 +1,8 @@
 # fstree
 
+> [!WARNING]
+> this isn't working like even a little bit 
+
 fstree is a super simple crate that stores a map of data with a tree-like structure.
 
 The primary use-case is to store [a file-system like structure](https://github.com/j6k4m8/rclonedirstat) and store metadata about each file.
