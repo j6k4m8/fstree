@@ -70,14 +70,14 @@ impl<V> DirectoryNode<V> {
 
 /// The tree itself.
 struct FSTreeMap<V> {
-    root: DirectoryNode<V>,
+    root: Box<DirectoryNode<V>>,
 }
 
 /// Implement the tree.
-impl<V> FSTreeMap<V> {
+impl<V: 'static> FSTreeMap<V> {
     fn new() -> Self {
         FSTreeMap {
-            root: DirectoryNode::new("root"),
+            root: Box::new(DirectoryNode::new("root")),
         }
     }
 
@@ -88,7 +88,7 @@ impl<V> FSTreeMap<V> {
         create_parents: bool,
     ) {
         // Start at the root.
-        let mut current = &mut self.root;
+        let current = &mut self.root;
         // For each subdir in the path:
         for name in path {
             // Get the child if it exists, or panic/create:
@@ -105,11 +105,7 @@ impl<V> FSTreeMap<V> {
                 }
             };
 
-            // If the child is a directory, continue to traverse deeper:
-            match child {
-                DirectoryNode => current = child,
-                FileNode => panic!("Path not found."),
-            }
+            // If the child is a directory, continue to traverse deeper.
         }
         // Add the child to the directory.
         current.add_child(child);
@@ -157,14 +153,5 @@ mod tests {
         tree.add_child_to_path(vec!["home", "users", "arthur"], child, true);
 
         assert_eq!(tree.root.get_child("home").unwrap().name(), "home");
-        // assert_eq!(
-        //     tree.root
-        //         .get_child("home")
-        //         .unwrap()
-        //         .get_child("users")
-        //         .unwrap()
-        //         .name(),
-        //     "users"
-        // );
     }
 }
