@@ -1,7 +1,7 @@
 # fstree
 
 > [!WARNING]
-> this isn't working like even a little bit 
+> this isn't working like even a little bit
 
 fstree is a super simple crate that stores a map of data with a tree-like structure.
 
@@ -12,20 +12,42 @@ for example, you might want to store the file size of every file in a tree and t
 ```rust
 use fstree::FsTree;
 
-let mut tree = FsTree::new();
-tree.insert("README.md", 100);
-tree.insert("src/main.rs", 200);
-tree.insert("src/lib.rs", 300);
+let mut tree = FSTreeMap::new();
+tree.insert_with_parents("home/users/arthur/answer.txt",  42);
+tree.insert_with_parents("home/users/arthur/password.txt",  128);
+```
+
+View the tree:
+
+```rust
+tree.print_tree();
+```
+
+```txt
+root
+ home
+  users
+   arthur
+    answer.txt: 42
+    password.txt: 128
 ```
 
 Map, reduce, match, and traversal functions:
 
 ```rust
-let total_size = tree.topo_reduce(|acc, size| acc + size, 0);
+tree.root.value_reduce(0,|acc,x| acc+x)
+```
 
+```txt
+170
+```
+
+## roadmap
+
+```rust
 let bytes_to_kilobytes: FsTree<String, u64> = tree.topo_map(|size| size / 1024);
 
-let has_readme = tree.topo_any(|path, _| path == "README.md");
+let has*readme = tree.topo_any(|path, _| path == "README.md");
 
 let mut paths = Vec::new();
 tree.topo_traverse(|path, _| paths.push(path.clone()));
