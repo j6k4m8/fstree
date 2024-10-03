@@ -13,7 +13,6 @@ pub enum Node<V> {
 }
 impl<V> Node<V>
 where
-    V: std::iter::Sum,
     V: Clone,
 {
     pub fn get_name(&self) -> &String {
@@ -55,16 +54,21 @@ where
         }
     }
 
-    // pub fn get_value(&self) -> &V {
-    //     match self {
-    //         Node::File {size,..} => size,
-    //         Node::Directory {  children,.. } => {
-    //             &children.iter().map(|child| *child.get_value()).sum()
-    //         }
-    //     }
-    // }
-
-    pub fn value_reduce<T>(&self, accumulator: T, f: fn(T, V) -> T) -> T {
+    pub fn reduce<T, F>(&self, accumulator: T, f: F) -> T
+    where
+        F: Fn(T,&String, V) -> T + Copy,
+    {
+        match self {
+            Node::File { size, name } => f(accumulator, name, size.clone()),
+            Node::Directory { children, .. } => children
+                .iter()
+                .fold(accumulator, |acc, child| child.reduce(acc,  f)),
+        }
+    }
+    pub fn value_reduce<T, F>(&self, accumulator: T, f: F) -> T
+    where
+        F: Fn(T, V) -> T + Copy,
+    {
         match self {
             Node::File { size, .. } => f(accumulator, size.clone()),
             Node::Directory { children, .. } => children
@@ -80,7 +84,6 @@ pub struct FSTreeMap<V> {
 
 impl<V> FSTreeMap<V>
 where
-    V: std::iter::Sum,
     V: Clone,
 {
     pub fn new() -> Self {
@@ -226,6 +229,35 @@ where
             Node::File { .. } => panic!("Path already exists"),
         }
     }
+
+    pub fn value_reduce<T, F>(&self, accumulator: T, f: F) -> T
+    where
+        F: Fn(T, V) -> T + Copy,
+    {
+        self.root.value_reduce(accumulator, f)
+    }
+    pub fn reduce<T, F>(&self, accumulator: T, f: F) -> T
+    where
+        F: Fn(T, &String, V) -> T + Copy,
+    {
+        self.root.reduce(accumulator, f)
+    }
+
+    pub fn any<F>(&self, f: F) -> bool
+    where
+        F: Fn(&String, &V) -> bool,
+    {
+        self.root.reduce(false, |acc, name, x| acc || f(name, &x))
+    }
+}
+
+impl<V> FSTreeMap<V>
+where
+    V: Clone + Default + std::ops::Add<Output = V>,
+{
+    pub fn value_sum(&self) -> V {
+        self.value_reduce(V::default(), |acc, x| acc + x)
+    }
 }
 
 impl<V> FSTreeMap<V>
@@ -279,16 +311,34 @@ mod tests {
         let mut tree = FSTreeMap::new();
         tree.insert("home", 42);
 
-        assert_eq!(tree.root.value_reduce(0, |acc, x| acc + x), 42);
+        assert_eq!(tree.value_reduce(0, |acc, x| acc + x), 42);
     }
 
     #[test]
     fn test_print_tree() {
         let mut tree = FSTreeMap::new();
-        // tree.make_directory("home");
         tree.insert_with_parents("home/users/arthur/answer.txt", 42);
         tree.insert_with_parents("home/users/arthur/password.txt", 128);
         tree.print_tree();
-        assert_eq!(tree.root.value_reduce(0, |acc, x| acc + x), 170);
+        assert_eq!(tree.value_reduce(0, |acc, x| acc + x), 170);
+    }
+
+    #[test]
+    fn test_can_sum_summable_generic_type() {
+        let mut tree = FSTreeMap::new();
+        tree.insert_with_parents("home/users/arthur/answer.txt", 42);
+        tree.insert_with_parents("home/users/arthur/password.txt", 128);
+        tree.print_tree();
+        assert_eq!(tree.value_sum(), 170);
+    }
+
+    #[test]
+    fn test_any() {
+        let mut tree = FSTreeMap::new();
+        tree.insert_with_parents("home/users/arthur/answer.txt", 42);
+        tree.insert_with_parents("home/users/arthur/password.txt", 128);
+        assert_eq!(tree.any(|name, _| name.contains("passw")), true);
+        assert_eq!(tree.any(|name, _| name.contains("Ideas")), false);
+        assert_eq!(tree.any(|_, size| size == &42), true);
     }
 }

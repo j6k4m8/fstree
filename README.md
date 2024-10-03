@@ -1,8 +1,5 @@
 # fstree
 
-> [!WARNING]
-> this isn't working like even a little bit
-
 fstree is a super simple crate that stores a map of data with a tree-like structure.
 
 The primary use-case is to store [a file-system like structure](https://github.com/j6k4m8/rclonedirstat) and store metadata about each file.
@@ -42,13 +39,16 @@ tree.root.value_reduce(0,|acc,x| acc+x)
 170
 ```
 
+```rust
+let has_readme = tree.any(|path, _| path == "README.md");
+```
+
+```rust
+true
+```
+
 ## roadmap
 
 ```rust
 let bytes_to_kilobytes: FsTree<String, u64> = tree.topo_map(|size| size / 1024);
-
-let has*readme = tree.topo_any(|path, _| path == "README.md");
-
-let mut paths = Vec::new();
-tree.topo_traverse(|path, _| paths.push(path.clone()));
 ```
