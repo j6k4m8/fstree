@@ -56,13 +56,13 @@ where
 
     pub fn reduce<T, F>(&self, accumulator: T, f: F) -> T
     where
-        F: Fn(T,&String, V) -> T + Copy,
+        F: Fn(T, &String, V) -> T + Copy,
     {
         match self {
             Node::File { size, name } => f(accumulator, name, size.clone()),
             Node::Directory { children, .. } => children
                 .iter()
-                .fold(accumulator, |acc, child| child.reduce(acc,  f)),
+                .fold(accumulator, |acc, child| child.reduce(acc, f)),
         }
     }
     pub fn value_reduce<T, F>(&self, accumulator: T, f: F) -> T
@@ -76,10 +76,17 @@ where
                 .fold(accumulator, |acc, child| child.value_reduce(acc, f)),
         }
     }
+
+    pub fn iter_children(&self) -> Result<impl Iterator<Item = &Box<Node<V>>> + '_, &'static str> {
+        match self {
+            Node::Directory { children, .. } => Ok(children.iter()),
+            Node::File { .. } => Err("Cannot iterate children on file"),
+        }
+    }
 }
 
 pub struct FSTreeMap<V> {
-    pub(crate) root: Box<Node<V>>,
+    pub root: Box<Node<V>>,
 }
 
 impl<V> FSTreeMap<V>
@@ -93,6 +100,10 @@ where
                 children: vec![],
             }),
         }
+    }
+
+    pub fn from_node(node: Box<Node<V>>) -> Self {
+        FSTreeMap { root: node }
     }
 
     pub fn get_size(&self, path: &str) -> &V {
@@ -177,6 +188,25 @@ where
         match self.get_node(path) {
             Some(Node::Directory { children, .. }) => Some(children),
             _ => None,
+        }
+    }
+
+    pub fn iter_children(&self, path: Option<&str>) -> Option<impl Iterator<Item = &Box<Node<V>>>> {
+        match path {
+            Some(path) => {
+                let node = self.get_node(path);
+                match node {
+                    Some(Node::Directory { children, .. }) => Some(children.iter()),
+                    _ => None,
+                }
+            }
+            None => {
+                let node = self.root.as_ref();
+                match node {
+                    Node::Directory { children, .. } => Some(children.iter()),
+                    _ => None,
+                }
+            }
         }
     }
 
